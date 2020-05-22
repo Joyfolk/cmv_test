@@ -1,4 +1,11 @@
 package design
+import eu.timepit.refined.api.Refined
+import eu.timepit.refined.string.MatchesRegex
+import eu.timepit.refined.types.numeric.NonNegInt
+import eu.timepit.refined.types.string.NonEmptyString
+import eu.timepit.refined.W
+import eu.timepit.refined.numeric.NonNegative
+import eu.timepit.refined._
 
 object Scenario3 {
   /**
@@ -17,8 +24,37 @@ object Scenario3 {
    * - A free user has a limit to the amount of posts he can write per day.
    * - A paid user has a counter of the remaining paid days
    */
-  class User
+  type UsernameSpec = MatchesRegex[W.`"""^[[a-z][A-Z][0-9]\\-\\._]+$"""`.T]
+  type Username = String Refined UsernameSpec
+  type Level = NonNegInt
+  type Experience = NonNegInt
+  type Name = NonEmptyString
 
+  sealed trait User {
+    def username: Username
+    def name: Name
+    def surname: Name
+    def level: Level
+    def experience: Experience
+  }
+
+  case class FreeUser (
+    username: Username,
+    name: Name,
+    surname: Name,
+    level: Level,
+    experience: Experience,
+    postsLeft: NonNegInt
+  ) extends User
+
+  case class PaidUser (
+    username: Username,
+    name: Name,
+    surname: Name,
+    level: Level,
+    experience: Experience,
+    daysRemaining: NonNegInt
+  ) extends User
 
   object UserLogic {
     /*
@@ -31,6 +67,25 @@ object Scenario3 {
      * still post when they post, give experience for posts, might increase or decrease a free users limit
      * etc.
      */
-    def runAtMidnight(user: User): User = ???
+    def runAtMidnight(user: User): User = {
+      val refLevel = refineV[NonNegative](user.level.value + user.experience.value / 1000)
+      val refExperience = refineV[NonNegative](user.experience.value % 1000)
+      val refUser = user match {
+        case u@FreeUser(_, _, _, _, _, postsLeft) =>
+          val newPostsLeft = if (postsLeft.value < 3) refineMV[NonNegative](3) else postsLeft
+          for {
+            newLevel <- refLevel
+            newExperience <- refExperience
+          } yield u.copy(level = newLevel, experience = newExperience, postsLeft = newPostsLeft)
+        case u@PaidUser(_, _, _, _, _, daysRemaining) =>
+          val refDaysRemaining = refineV[NonNegative](Math.max(daysRemaining.value - 1, 0))
+          for {
+            newLevel <- refLevel
+            newExperience <- refExperience
+            newDaysRemaining <- refDaysRemaining
+          } yield u.copy(level = newLevel, experience = newExperience, daysRemaining = newDaysRemaining)
+      }
+      refUser.right.get  // the only way to have refinement errors is to get int overflow, highly unlikely (
+    }
   }
 }

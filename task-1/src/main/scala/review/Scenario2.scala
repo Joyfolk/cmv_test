@@ -1,5 +1,6 @@
 package review
 
+import cats.effect.Sync
 import donotmodifyme.Scenario2._
 import database._
 
@@ -9,33 +10,39 @@ import database._
  * java the libary `database`.
  */
 object Scenario2 {
-  class DatabaseUser(credentials: DatabaseCredentials) {
-    def obtain: DatabaseConnection = {
-      DatabaseConnection.open(credentials)
+  trait ConnectionIO[F[_]] {
+    def put(datum: Datum): F[Unit]
+    def getAll: F[Seq[Datum]]
+  }
+
+  object DatabaseUser {
+    def execute[F[_]: Sync, A](credentials: DatabaseCredentials)(f: ConnectionIO[F] => F[A]): F[A] = {
+      val s = implicitly[Sync[F]]
+      s.bracket(s.delay(DatabaseConnection.open(credentials)))(con => f(interp(con)))(con => s.delay(con.close()))
     }
 
-    def put(connection: DatabaseConnection, datum: Datum) = {
-      connection.put(datum.key, datum.serializeContent)
-    }
+    private def interp[F[_]: Sync](connection: DatabaseConnection): ConnectionIO[F] = {
+      val s = implicitly[Sync[F]]
+      new ConnectionIO[F] {
+        override def put(datum: Datum): F[Unit] =
+          s.delay(connection.put(datum.key, datum.serializeContent))
 
-    def getAll(connection: DatabaseConnection): Seq[Datum] = {
-      val keys = connection.keys.toList
-
-      val builder = Seq.newBuilder[Datum]
-      keys.foreach { key =>
-        val bytes = connection.fetch(key)
-        Datum.deserialize(bytes) match {
-          case Left(error) => 
-          case Right(datum) => 
-            builder += datum
-        }
+        override def getAll: F[Seq[Datum]] =
+          s.delay {
+            val keys = connection.keys.toList
+            val builder = Seq.newBuilder[Datum]
+            keys.foreach { key =>
+              val bytes = connection.fetch(key)
+              Datum.deserialize(bytes) match {
+                case Left(error) =>
+                  // should we really ignore deserialization errors?
+                case Right(datum) =>
+                  builder += datum
+              }
+            }
+            builder.result
+          }
       }
-
-      builder.result
-    }
-
-    def close(connection: DatabaseConnection): Unit = {
-      connection.close
     }
   }
 }
