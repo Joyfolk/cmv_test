@@ -18,7 +18,25 @@ trait PriorityQueue[K, V] {
 
 object PriorityQueue {
   def intPriority[V]: PriorityQueue[Int, V] = {
-    Queue.empty[V]
+    new JavaQueue[V]()
+  }
+}
+
+class JavaQueue[V] extends PriorityQueue[Int, V] {
+  type Entry = (Int, V)
+  val pq = new java.util.PriorityQueue[Entry]((o1: (Int, V), o2: (Int, V)) => Integer.compare(o1._1, o2._1))
+
+  override def isEmpty: Boolean = pq.isEmpty
+  override def deleteMin(): Unit = {
+    pq.poll()
+    ()
+  }
+
+  override def priority: Int = pq.peek()._1
+  override def min: V = pq.peek()._2
+  override def enqueue(k: Int, v: V): Unit = {
+    pq.add((k, v))
+    ()
   }
 }
 

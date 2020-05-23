@@ -1,4 +1,5 @@
 package task1.modifyme
+import scala.collection.mutable
 
 /**
  * Stores the distances (of type `W) to the labels `A`.
@@ -18,14 +19,16 @@ object Distances {
   def empty(implicit ev: Infinity[Int]): Distances[Int, Int] = new MapDistances
 }
 
-class MapDistances[A, W](implicit ev: Infinity[W]) extends Distances[A, W] {
-  var underlying = Map.empty[A, W]
+class MapDistances(implicit ev: Infinity[Int]) extends Distances[Int, Int] {
+  var underlying = new mutable.LongMap[Int]
+  val inf: Int = Infinity[Int]
 
-  def distanceAt(a: A): W = {
-    underlying.getOrElse(a, Infinity[W])
+  def distanceAt(a: Int): Int = {
+    underlying.getOrElse(a.toLong, inf)
   }
 
-  def updated(label: A, value: W): Unit = {
-    this.underlying = underlying.updated(label, value)
+  def updated(label: Int, value: Int): Unit = {
+    underlying.update(label.toLong, value)
   }
 }
+

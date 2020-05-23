@@ -1,4 +1,5 @@
 package task1.modifyme
+import scala.collection.mutable
 
 /*
  * A collection of found Entries[A, W]. The only purpose of this class is to collect Entries and then print
@@ -13,7 +14,7 @@ abstract class FoundEntries[A, W] {
   def toString: String
 }
 object FoundEntries {
-  def empty: FoundEntries[Int, Int] = new ListFoundEntries[Int, Int]
+  def empty: FoundEntries[Int, Int] = new ArrayFoundEntries[Int, Int]
 }
 
 class ListFoundEntries[A, W] extends FoundEntries[A, W] {
@@ -28,5 +29,22 @@ class ListFoundEntries[A, W] extends FoundEntries[A, W] {
   override def toString = {
     // the first entry added is always the origin which we need to skip
     entries.toList.dropRight(1).mkString("\n")
+  }
+}
+
+class ArrayFoundEntries[A, W] extends FoundEntries[A, W] {
+  val builder = new mutable.ArrayBuilder.ofRef[Entry[A, W]]()
+  var size = 0
+
+  def add(entry: Entry[A, W]): Unit = {
+    builder += entry
+    size += 1
+  }
+
+  def nEntries: Int = size - 1
+
+  override def toString: String = {
+    // the first entry added is always the origin which we need to skip
+    builder.result().dropRight(1).mkString("\n")
   }
 }

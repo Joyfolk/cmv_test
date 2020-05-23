@@ -15,8 +15,8 @@ trait Graph[A, W] {
 
 object Graph {
   // return your instance of the graph reading from the generic graph
-  def from(genericGraph: task1.GenericGraph[Int, Int]): Graph[Int, Int] = 
-    genericGraph
+  def from(genericGraph: task1.GenericGraph[Int, Int]): Graph[Int, Int] =
+    BetterGraph(genericGraph)
 }
 
 // neighbours of a label (of type A) of a graph with weights of type W
@@ -25,4 +25,3 @@ trait Neighbours[A, W] {
   // neighbours are reached.
   def foreach(f: (A, W) => Unit): Unit
 }
-
